@@ -1,0 +1,31 @@
+# Virtual environment
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment variables (NEVER upload API keys)
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# Mac junk
+.DS_Store
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Logs
+*.log
+
+# Supabase
+supabase/.temp/
