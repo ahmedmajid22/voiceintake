@@ -1,28 +1,31 @@
 import { useState, useRef } from "react"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import Dashboard from "./Dashboard"
 
 const API_URL = "http://127.0.0.1:8000"
 
 const FIELDS = [
-  { key: "full_name", label: "Full Name" },
-  { key: "date_of_birth", label: "Date of Birth" },
-  { key: "address", label: "Address" },
-  { key: "phone_number", label: "Phone Number" },
-  { key: "insurance_number", label: "Insurance Number" },
+  { key: "full_name",         label: "Full Name" },
+  { key: "date_of_birth",     label: "Date of Birth" },
+  { key: "address",           label: "Address" },
+  { key: "phone_number",      label: "Phone Number" },
+  { key: "insurance_number",  label: "Insurance Number" },
   { key: "emergency_contact", label: "Emergency Contact" },
 ]
 
-export default function App() {
-  const [status, setStatus] = useState("idle")
+function PatientView() {
+  const [status, setStatus]         = useState("idle")
   const [transcript, setTranscript] = useState("")
-  const [extracted, setExtracted] = useState(null)
-  const [error, setError] = useState("")
+  const [extracted, setExtracted]   = useState(null)
+  const [error, setError]           = useState("")
+
   const mediaRecorderRef = useRef(null)
-  const chunksRef = useRef([])
+  const chunksRef        = useRef([])
 
   const startRecording = async () => {
     setError("")
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream   = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
       chunksRef.current = []
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
@@ -39,14 +42,17 @@ export default function App() {
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setStatus("processing") }
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop()
+      setStatus("processing")
+    }
   }
 
   const sendAudio = async (blob) => {
     try {
       const formData = new FormData()
       formData.append("file", blob, "recording.webm")
-      const res = await fetch(`${API_URL}/process`, { method: "POST", body: formData })
+      const res  = await fetch(`${API_URL}/process`, { method: "POST", body: formData })
       const data = await res.json()
       setTranscript(data.transcript)
       setExtracted(data.extracted)
@@ -60,7 +66,11 @@ export default function App() {
   const confirmAndFill = async () => {
     setStatus("filling")
     try {
-      await fetch(`${API_URL}/fill`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(extracted) })
+      await fetch(`${API_URL}/fill`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(extracted),
+      })
       setStatus("done")
     } catch {
       setError("Error filling form. Please try again.")
@@ -73,9 +83,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
       <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white px-8 py-5 shadow-lg">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold tracking-tight">🏥 VoiceIntake</h1>
-          <p className="text-blue-200 text-sm mt-1">AI-powered patient intake — speak naturally, we handle the rest</p>
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">🏥 VoiceIntake</h1>
+            <p className="text-blue-200 text-sm mt-1">AI-powered patient intake — speak naturally, we handle the rest</p>
+          </div>
+          <a href="/dashboard" className="px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded-lg text-sm font-bold transition-all">
+            Staff Dashboard →
+          </a>
         </div>
       </div>
 
@@ -85,7 +100,10 @@ export default function App() {
             <div className="bg-white rounded-2xl shadow-md p-10 mb-6">
               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-8">Patient Check-In</p>
               <button onClick={startRecording} className="w-40 h-40 rounded-full bg-blue-700 hover:bg-blue-800 text-white shadow-2xl flex items-center justify-center mx-auto transition-all duration-200 hover:scale-105 active:scale-95">
-                <div className="text-center"><div className="text-5xl mb-2">🎙️</div><div className="text-xs font-bold tracking-widest">TAP TO START</div></div>
+                <div className="text-center">
+                  <div className="text-5xl mb-2">🎙️</div>
+                  <div className="text-xs font-bold tracking-widest">TAP TO START</div>
+                </div>
               </button>
               <p className="text-gray-400 text-sm mt-8 max-w-sm mx-auto leading-relaxed">Tap and speak your information naturally. Our AI will understand and fill your intake form automatically.</p>
             </div>
@@ -110,6 +128,7 @@ export default function App() {
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
                 <span className="text-red-600 font-bold text-sm tracking-widest">RECORDING</span>
               </div>
+              <p className="text-gray-400 text-sm max-w-sm mx-auto leading-relaxed">Speak clearly. Include your name, date of birth, address, insurance number, and symptoms.</p>
             </div>
           </div>
         )}
@@ -119,7 +138,7 @@ export default function App() {
             <div className="bg-white rounded-2xl shadow-md p-12">
               <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-700 rounded-full animate-spin mx-auto mb-6"></div>
               <h2 className="text-xl font-bold text-gray-800 mb-2">Processing your voice...</h2>
-              <p className="text-gray-400 text-sm">Transcribing and extracting your information with AI.</p>
+              <p className="text-gray-400 text-sm">Transcribing with Whisper, then extracting your information with AI.</p>
             </div>
           </div>
         )}
@@ -185,5 +204,16 @@ export default function App() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/"          element={<PatientView />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

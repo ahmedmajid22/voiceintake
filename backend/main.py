@@ -88,3 +88,13 @@ async def process_and_fill(file: UploadFile = File(...)):
         "session_id": session_id,
         "message":    "Browser opened — check the Chromium window"
     }
+
+@app.get("/sessions")
+def get_sessions():
+    from database.logger import supabase
+    result = supabase.table("sessions")\
+        .select("*")\
+        .order("created_at", desc=True)\
+        .limit(50)\
+        .execute()
+    return {"success": True, "sessions": result.data}
