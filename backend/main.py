@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from ai.extractor import extract_patient_data
 from stt.transcriber import transcribe_audio
 from form.filler import fill_form
+from database.logger import log_session
 from typing import Optional, List
 import os
 
@@ -24,12 +25,12 @@ class TranscriptRequest(BaseModel):
     transcript: str
 
 class FillRequest(BaseModel):
-    full_name: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    address: Optional[str] = None
-    phone_number: Optional[str] = None
-    insurance_number: Optional[str] = None
-    symptoms: List[str] = []
+    full_name:         Optional[str] = None
+    date_of_birth:     Optional[str] = None
+    address:           Optional[str] = None
+    phone_number:      Optional[str] = None
+    insurance_number:  Optional[str] = None
+    symptoms:          List[str] = []
     emergency_contact: Optional[str] = None
 
 @app.get("/")
@@ -38,8 +39,11 @@ def root():
 
 @app.get("/health")
 def health():
-    api_key = os.getenv("GROQ_API_KEY")
-    return {"status": "healthy", "groq_key_loaded": bool(api_key)}
+    return {
+        "status": "healthy",
+        "groq_key_loaded":     bool(os.getenv("GROQ_API_KEY")),
+        "supabase_connected":  bool(os.getenv("SUPABASE_URL"))
+    }
 
 @app.post("/extract")
 def extract(request: TranscriptRequest):
@@ -49,7 +53,7 @@ def extract(request: TranscriptRequest):
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):
     audio_bytes = await file.read()
-    transcript = transcribe_audio(audio_bytes, file.filename)
+    transcript  = transcribe_audio(audio_bytes, file.filename)
     return {"success": True, "transcript": transcript}
 
 @app.post("/fill")
@@ -60,19 +64,27 @@ def fill(request: FillRequest):
 @app.post("/process")
 async def process(file: UploadFile = File(...)):
     audio_bytes = await file.read()
-    transcript = transcribe_audio(audio_bytes, file.filename)
-    extracted = extract_patient_data(transcript)
-    return {"success": True, "transcript": transcript, "extracted": extracted}
+    transcript  = transcribe_audio(audio_bytes, file.filename)
+    extracted   = extract_patient_data(transcript)
+    session_id  = log_session(transcript, extracted)
+    return {
+        "success":    True,
+        "transcript": transcript,
+        "extracted":  extracted,
+        "session_id": session_id
+    }
 
 @app.post("/process-and-fill")
 async def process_and_fill(file: UploadFile = File(...)):
     audio_bytes = await file.read()
-    transcript = transcribe_audio(audio_bytes, file.filename)
-    extracted = extract_patient_data(transcript)
+    transcript  = transcribe_audio(audio_bytes, file.filename)
+    extracted   = extract_patient_data(transcript)
+    session_id  = log_session(transcript, extracted)
     fill_form(extracted)
     return {
-        "success": True,
+        "success":    True,
         "transcript": transcript,
-        "extracted": extracted,
-        "message": "Browser opened — check the Chromium window"
+        "extracted":  extracted,
+        "session_id": session_id,
+        "message":    "Browser opened — check the Chromium window"
     }
