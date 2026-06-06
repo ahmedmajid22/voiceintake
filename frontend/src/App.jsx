@@ -22,7 +22,7 @@ function PatientView() {
   const [error, setError]           = useState("")
   const [consented, setConsented]   = useState(false)
   const [language, setLanguage]     = useState("en")
-
+  const clinicId = new URLSearchParams(window.location.search).get("clinic") || "default"
   const mediaRecorderRef = useRef(null)
   const chunksRef        = useRef([])
 
@@ -57,6 +57,7 @@ function PatientView() {
       const formData = new FormData()
       formData.append("file", blob, "recording.webm")
       formData.append("language", language)
+      formData.append("clinic_id", clinicId)
       const res  = await fetch(`${API_URL}/process`, { method: "POST", body: formData })
       const data = await res.json()
       setTranscript(data.transcript)
