@@ -1,17 +1,12 @@
-import whisper
-import tempfile
 import os
-import warnings
-warnings.filterwarnings("ignore")
+from groq import Groq
 
-model = whisper.load_model("small")
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def transcribe_audio(audio_bytes: bytes, filename: str = "audio.webm") -> str:
-    with tempfile.NamedTemporaryFile(suffix=os.path.splitext(filename)[1], delete=False) as tmp:
-        tmp.write(audio_bytes)
-        tmp_path = tmp.name
-    try:
-        result = model.transcribe(tmp_path)
-        return result["text"].strip()
-    finally:
-        os.unlink(tmp_path)
+def transcribe_audio(audio_bytes: bytes, filename: str = "audio.webm", language: str = "en") -> str:
+    transcription = client.audio.transcriptions.create(
+        file=(filename, audio_bytes),
+        model="whisper-large-v3",
+        language=language,
+    )
+    return transcription.text.strip()

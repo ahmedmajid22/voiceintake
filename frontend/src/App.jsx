@@ -1,23 +1,27 @@
 import { useState, useRef } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Dashboard from "./Dashboard"
+import DemoClinic from "./DemoClinic"
 
 const API_URL = "http://127.0.0.1:8000"
 
 const FIELDS = [
-  { key: "full_name",         label: "Full Name" },
-  { key: "date_of_birth",     label: "Date of Birth" },
-  { key: "address",           label: "Address" },
-  { key: "phone_number",      label: "Phone Number" },
-  { key: "insurance_number",  label: "Insurance Number" },
-  { key: "emergency_contact", label: "Emergency Contact" },
+  { key: "full_name",         label: "Full Name",         type: "text" },
+  { key: "date_of_birth",     label: "Date of Birth",     type: "text" },
+  { key: "address",           label: "Address",           type: "text" },
+  { key: "phone_number",      label: "Phone Number",      type: "text" },
+  { key: "insurance_number",  label: "Insurance Number",  type: "text" },
+  { key: "emergency_contact", label: "Emergency Contact", type: "text" },
 ]
 
 function PatientView() {
-  const [status, setStatus]         = useState("idle")
+  const [status, setStatus]         = useState("consent")
   const [transcript, setTranscript] = useState("")
   const [extracted, setExtracted]   = useState(null)
+  const [edited, setEdited]         = useState(null)
   const [error, setError]           = useState("")
+  const [consented, setConsented]   = useState(false)
+  const [language, setLanguage]     = useState("en")
 
   const mediaRecorderRef = useRef(null)
   const chunksRef        = useRef([])
@@ -52,10 +56,12 @@ function PatientView() {
     try {
       const formData = new FormData()
       formData.append("file", blob, "recording.webm")
+      formData.append("language", language)
       const res  = await fetch(`${API_URL}/process`, { method: "POST", body: formData })
       const data = await res.json()
       setTranscript(data.transcript)
       setExtracted(data.extracted)
+      setEdited(data.extracted)
       setStatus("confirm")
     } catch {
       setError("Error processing audio. Make sure the backend is running and try again.")
@@ -63,22 +69,19 @@ function PatientView() {
     }
   }
 
-  const confirmAndFill = async () => {
-    setStatus("filling")
-    try {
-      await fetch(`${API_URL}/fill`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(extracted),
-      })
-      setStatus("done")
-    } catch {
-      setError("Error filling form. Please try again.")
-      setStatus("confirm")
-    }
+  const submitForm = async () => {
+    setStatus("done")
   }
 
-  const reset = () => { setStatus("idle"); setTranscript(""); setExtracted(null); setError("") }
+  const reset = () => {
+    setStatus("consent")
+    setTranscript("")
+    setExtracted(null)
+    setEdited(null)
+    setError("")
+    setConsented(false)
+    setLanguage("en")
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
@@ -95,6 +98,71 @@ function PatientView() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-10">
+
+        {/* CONSENT */}
+        {status === "consent" && (
+          <div className="text-center">
+            <div className="bg-white rounded-2xl shadow-md p-10 mb-6">
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Before We Begin</h2>
+              <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+                Your voice will be processed by AI to extract your intake information.
+                No audio is stored — only the extracted details are saved securely.
+              </p>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-left mb-6">
+                <ul className="text-blue-700 text-sm space-y-2">
+                  <li>✓ Your audio is never stored</li>
+                  <li>✓ Only your intake details are saved</li>
+                  <li>✓ Data is encrypted and secure</li>
+                  <li>✓ You can request deletion at any time</li>
+                </ul>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer justify-center mb-6">
+                <input
+                  type="checkbox"
+                  checked={consented}
+                  onChange={(e) => setConsented(e.target.checked)}
+                  className="w-4 h-4 accent-blue-700"
+                />
+                <span className="text-gray-600 text-sm">I agree to my information being processed by AI</span>
+              </label>
+              <div className="mb-6">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Select Your Language</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { code: "en", label: "🇬🇧 English" },
+                    { code: "de", label: "🇩🇪 Deutsch" },
+                    { code: "fr", label: "🇫🇷 Français" },
+                    { code: "ar", label: "🇸🇦 العربية" },
+                  ].map(({ code, label }) => (
+                    <button
+                      key={code}
+                      onClick={() => setLanguage(code)}
+                      className={`py-2 px-4 rounded-xl border-2 text-sm font-bold transition-all ${
+                        language === code
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-gray-200 text-gray-600 hover:border-blue-200"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+
+              <button
+                onClick={() => setStatus("idle")}
+                disabled={!consented}
+                className="px-8 py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Continue to Check-In →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* IDLE */}
         {status === "idle" && (
           <div className="text-center">
             <div className="bg-white rounded-2xl shadow-md p-10 mb-6">
@@ -114,6 +182,7 @@ function PatientView() {
           </div>
         )}
 
+        {/* RECORDING */}
         {status === "recording" && (
           <div className="text-center">
             <div className="bg-white rounded-2xl shadow-md p-10">
@@ -133,6 +202,7 @@ function PatientView() {
           </div>
         )}
 
+        {/* PROCESSING */}
         {status === "processing" && (
           <div className="text-center">
             <div className="bg-white rounded-2xl shadow-md p-12">
@@ -143,56 +213,70 @@ function PatientView() {
           </div>
         )}
 
-        {status === "confirm" && extracted && (
+        {/* CONFIRM + INLINE EDITABLE FORM */}
+        {status === "confirm" && edited && (
           <div>
             <div className="bg-white rounded-2xl shadow-md p-6 mb-4">
-              <h2 className="text-lg font-bold text-gray-800 mb-1">✅ Review Your Information</h2>
-              <p className="text-gray-400 text-sm mb-5">Confirm everything looks correct before we fill your form.</p>
+              <h2 className="text-lg font-bold text-gray-800 mb-1">✅ Review & Edit Your Information</h2>
+              <p className="text-gray-400 text-sm mb-5">AI filled your form — review each field and correct anything before submitting.</p>
+
               {transcript && (
                 <div className="bg-slate-50 rounded-xl p-4 mb-5 border border-slate-100">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">What we heard</p>
                   <p className="text-slate-600 text-sm italic leading-relaxed">"{transcript}"</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                {FIELDS.map(({ key, label }) => extracted[key] ? (
-                  <div key={key} className="bg-green-50 border border-green-100 rounded-xl p-3">
-                    <p className="text-xs font-bold text-green-500 uppercase tracking-widest mb-1">{label}</p>
-                    <p className="text-gray-800 text-sm font-semibold">{extracted[key]}</p>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                {FIELDS.map(({ key, label }) => (
+                  <div key={key} className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">{label}</label>
+                    <input
+                      type="text"
+                      value={edited[key] || ""}
+                      onChange={(e) => setEdited({ ...edited, [key]: e.target.value })}
+                      className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-blue-50"
+                      placeholder={`Enter ${label.toLowerCase()}`}
+                    />
                   </div>
-                ) : null)}
-                {extracted.symptoms?.length > 0 && (
-                  <div className="col-span-2 bg-green-50 border border-green-100 rounded-xl p-3">
-                    <p className="text-xs font-bold text-green-500 uppercase tracking-widest mb-1">Symptoms</p>
-                    <p className="text-gray-800 text-sm font-semibold">{extracted.symptoms.join(", ")}</p>
-                  </div>
-                )}
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Symptoms</label>
+                <input
+                  type="text"
+                  value={edited.symptoms?.join(", ") || ""}
+                  onChange={(e) => setEdited({ ...edited, symptoms: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
+                  className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-blue-50"
+                  placeholder="e.g. headache, fever, cough"
+                />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={reset} className="py-4 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm hover:border-gray-300 hover:bg-gray-50 transition-all">🔄 Re-record</button>
-              <button onClick={confirmAndFill} className="py-4 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-lg transition-all">✅ Confirm & Fill Form</button>
+              <button onClick={reset} className="py-4 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm hover:border-gray-300 hover:bg-gray-50 transition-all">
+                🔄 Re-record
+              </button>
+              <button onClick={submitForm} className="py-4 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-lg transition-all">
+                ✅ Submit Form
+              </button>
             </div>
           </div>
         )}
 
-        {status === "filling" && (
-          <div className="text-center">
-            <div className="bg-white rounded-2xl shadow-md p-12">
-              <div className="text-6xl mb-5">🖥️</div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Opening clinic form...</h2>
-              <p className="text-gray-400 text-sm">Watch the browser window — every field is being filled automatically.</p>
-            </div>
-          </div>
-        )}
-
+        {/* DONE */}
         {status === "done" && (
           <div className="text-center">
             <div className="bg-white rounded-2xl shadow-md p-12">
               <div className="text-6xl mb-5">🎉</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Form Filled!</h2>
-              <p className="text-gray-400 text-sm mb-8 max-w-sm mx-auto leading-relaxed">Check the browser window. Review the completed form and click Submit when ready.</p>
-              <button onClick={reset} className="px-8 py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-lg transition-all">➕ Start New Patient</button>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Form Submitted!</h2>
+              <p className="text-gray-400 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
+                Your information has been received. Please let the front desk know you have checked in.
+              </p>
+              <button onClick={reset} className="px-8 py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-lg transition-all">
+                ➕ Start New Patient
+              </button>
             </div>
           </div>
         )}
@@ -213,6 +297,7 @@ export default function App() {
       <Routes>
         <Route path="/"          element={<PatientView />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/demo" element={<DemoClinic />} />
       </Routes>
     </BrowserRouter>
   )

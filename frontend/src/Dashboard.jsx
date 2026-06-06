@@ -1,19 +1,102 @@
 import { useState, useEffect } from "react"
+import { supabase } from "./supabase"
 
 const API_URL = "http://127.0.0.1:8000"
 
-export default function Dashboard() {
-  const [sessions, setSessions] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [selected, setSelected] = useState(null)
+const CLINICS = [
+  { id: "default",      name: "Default Clinic" },
+  { id: "citymed_demo", name: "CityMed Clinic" },
+]
+function Login({ onLogin }) {
+  const [email, setEmail]       = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError]       = useState("")
+  const [loading, setLoading]   = useState(false)
 
-  useEffect(() => { fetchSessions() }, [])
+  const handleLogin = async () => {
+    setError("")
+    setLoading(true)
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+    onLogin(data.session)
+  }
 
-  const fetchSessions = async () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-md p-10 w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-800">🏥 VoiceIntake</h1>
+          <p className="text-gray-400 text-sm mt-1">Staff Dashboard — Sign In</p>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
+              placeholder="your@email.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
+              placeholder="••••••••"
+            />
+          </div>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <p className="text-red-600 text-sm">⚠️ {error}</p>
+            </div>
+          )}
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50"
+          >
+            {loading ? "Signing in..." : "Sign In →"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function Dashboard() {
+  const [session, setSession]     = useState(null)
+  const [sessions, setSessions]   = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [selected, setSelected]   = useState(null)
+  const [error, setError]         = useState("")
+  const [clinicId, setClinicId]   = useState("default")
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (session) fetchSessions(clinicId)
+  }, [session, clinicId])
+
+  const fetchSessions = async (cId = clinicId) => {
     try {
       setLoading(true)
-      const res  = await fetch(`${API_URL}/sessions`)
+      const res  = await fetch(`${API_URL}/sessions?clinic_id=${cId}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
       const data = await res.json()
       setSessions(data.sessions || [])
     } catch {
@@ -23,8 +106,22 @@ export default function Dashboard() {
     }
   }
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setSession(null)
+    setSessions([])
+  }
+
   const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   const formatDate = (ts) => new Date(ts).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })
+
+  if (loading && !session) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-700 rounded-full animate-spin"></div>
+    </div>
+  )
+
+  if (!session) return <Login onLogin={setSession} />
 
   const today = sessions.filter(s => new Date(s.created_at).toDateString() === new Date().toDateString())
 
@@ -45,12 +142,24 @@ export default function Dashboard() {
               <p className="text-blue-200 text-xs uppercase tracking-widest">Total</p>
               <p className="text-2xl font-bold">{sessions.length}</p>
             </div>
+            <select
+              value={clinicId}
+              onChange={(e) => { setClinicId(e.target.value); setSelected(null) }}
+              className="px-3 py-2 bg-blue-800 border border-blue-600 text-white rounded-lg text-sm font-bold focus:outline-none"
+            >
+              {CLINICS.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
             <button onClick={fetchSessions} className="ml-4 px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded-lg text-sm font-bold transition-all">
               🔄 Refresh
             </button>
             <a href="/" className="px-4 py-2 bg-white text-blue-900 rounded-lg text-sm font-bold hover:bg-blue-50 transition-all">
               🎙️ Patient View
             </a>
+            <button onClick={handleLogout} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-all">
+              Sign Out
+            </button>
           </div>
         </div>
       </div>
@@ -61,7 +170,6 @@ export default function Dashboard() {
             <p className="text-red-600 text-sm font-medium">⚠️ {error}</p>
           </div>
         )}
-
         {loading ? (
           <div className="text-center py-20">
             <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-700 rounded-full animate-spin mx-auto mb-4"></div>
@@ -105,7 +213,6 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
-
             <div className="lg:col-span-2">
               {selected ? (
                 <div>
@@ -120,7 +227,6 @@ export default function Dashboard() {
                         {selected.status}
                       </span>
                     </div>
-
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       {[
                         ["Date of Birth",     selected.date_of_birth],
@@ -135,7 +241,6 @@ export default function Dashboard() {
                         </div>
                       ))}
                     </div>
-
                     {selected.symptoms?.length > 0 && (
                       <div className="bg-red-50 rounded-xl p-4 mb-5">
                         <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-2">Symptoms</p>
@@ -146,7 +251,6 @@ export default function Dashboard() {
                         </div>
                       </div>
                     )}
-
                     {selected.transcript && (
                       <div className="bg-slate-50 rounded-xl p-4">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Voice Transcript</p>
