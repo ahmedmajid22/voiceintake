@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Header
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -82,7 +82,7 @@ def extract(request: TranscriptRequest):
     return {"success": True, "transcript": request.transcript, "extracted": result}
 
 @app.post("/process")
-async def process(file: UploadFile = File(...), clinic_id: str = "default", language: str = "en"):
+async def process(file: UploadFile = File(...), clinic_id: str = Form("default"), language: str = Form("en")):
     audio_bytes = await file.read()
     transcript  = transcribe_audio(audio_bytes, file.filename, language=language)
     extracted   = extract_patient_data(transcript)
