@@ -9,7 +9,7 @@ const FIELDS = [
   { key: "emergency_contact", label: "Emergency Contact" },
 ]
 
-export default function Widget({ apiUrl = "http://127.0.0.1:8000", clinicId = "default" }) {
+export default function Widget({ apiUrl = import.meta.env.VITE_API_URL, clinicId = "default" }) {
   const [status, setStatus]       = useState("consent")
   const [transcript, setTranscript] = useState("")
   const [edited, setEdited]       = useState(null)
