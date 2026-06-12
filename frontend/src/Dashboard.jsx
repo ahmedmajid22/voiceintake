@@ -14,6 +14,10 @@ function Login({ onLogin }) {
   const [loading, setLoading]   = useState(false)
 
   const handleLogin = async () => {
+    if (!supabase) {
+      setError("Authentication is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.")
+      return
+    }
     setError("")
     setLoading(true)
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
@@ -81,6 +85,7 @@ export default function Dashboard() {
   const [clinicId, setClinicId]   = useState("default")
 
   useEffect(() => {
+    if (!supabase) { setLoading(false); return }
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
@@ -107,7 +112,7 @@ export default function Dashboard() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    if (supabase) await supabase.auth.signOut()
     setSession(null)
     setSessions([])
   }
