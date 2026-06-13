@@ -37,6 +37,7 @@ app.add_middleware(
         "http://localhost:5174",
         "https://voiceintake-app.netlify.app",
         "https://voiceintake-blond.vercel.app",
+        "https://voiceintake-git-main-ahmed-abufayed.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
