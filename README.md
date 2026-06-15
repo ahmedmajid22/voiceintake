@@ -114,7 +114,7 @@ MIT License — free to use, modify, and distribute.
 
 ## Author
 
-**Ahmed Al-Majid**
+**Ahmed Majid**
 - [voiceintake-app.vercel.app](https://voiceintake-blond.vercel.app)
 
 ---
