@@ -71,6 +71,16 @@ function PatientView() {
   }
 
   const submitForm = async () => {
+    setStatus("processing")
+    try {
+      await fetch(`${API_URL}/extract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, clinic_id: clinicId, extracted: edited }),
+      })
+    } catch {
+      // non-critical, session already saved — just proceed
+    }
     setStatus("done")
   }
 
