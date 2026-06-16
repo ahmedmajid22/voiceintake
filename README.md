@@ -304,8 +304,13 @@ MIT License — free to use, modify, and distribute.
 
 <div align="center">
 
-**Built for clinics. Powered by Groq & Supabase.**
+## 🔗 Links
 
-*If VoiceIntake saves your clinic time, give it a ⭐ on GitHub*
+| | URL |
+|---|---|
+| 🌐 Marketing page | [voiceintake-blond.vercel.app/landing](https://voiceintake-blond.vercel.app/landing) |
+| 🚀 Live demo | [voiceintake-blond.vercel.app/demo](https://voiceintake-blond.vercel.app/demo) |
+| 📊 Staff dashboard | [voiceintake-blond.vercel.app/dashboard](https://voiceintake-blond.vercel.app/dashboard) |
+| ▶️ Demo video | [youtu.be/AbnuLlbKCQA](https://youtu.be/AbnuLlbKCQA) |
 
 </div>
